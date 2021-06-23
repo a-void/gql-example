@@ -1,60 +1,41 @@
 const axios = require('axios').default;
-const {
-  GraphQLFieldConfig,
-  GraphQLNonNull,
-  GraphQLString,
-  GraphQLObjectType,
-  GraphQLID,
-  GraphQLList,
-} = require('graphql');
+const { GraphQLString } = require('graphql');
+const { UserType } = require('../types')
 
-
-/**
- * Types
- */
-const ContinentsType = new GraphQLObjectType({
-  name: 'Continents',
-  fields: {
-    data: { type: new GraphQLList(GraphQLString) },
-  },
-});
-
-const TimezonesType = new GraphQLObjectType({
-  name: 'Timezones',
-  fields: {
-    data: { type: new GraphQLList(GraphQLString) },
-  },
-});
 
 
 /**
  * Queries
  */
-const getContinents = {
-  type: ContinentsType,
-  async resolve(obj, args, ctx, info) {
-    const { data } = await axios.post('https://countries.trevorblades.com/', {
-      query: `query Continents($filter: ContinentFilterInput = {}) {
-        continents(filter: $filter) {
-          name
-        }
-      }`,
-    });
-    return { data: data.data.continents.map((continent) => continent.name), };
+const user = {
+  type: UserType,
+  args: {
+    id: { type: GraphQLString },
+    email: { type: GraphQLString },
+    google_id: { type: GraphQLString },
   },
-};
-
-const getTimezones = {
-  type: TimezonesType,
   async resolve(obj, args, ctx, info) {
-    const { data } = await axios.get('http://worldtimeapi.org/api/timezone')
-    return { data };
+    const query = Object.keys(args).reduce((acc, key) => acc.concat(`${key}=${args[key]}`), '');
+    const { data } = await axios.get(`http://localhost:3000/users?${query}`);
+    return data;
   },
 };
 
 
 module.exports = {
-  getContinents,
-  getTimezones,
+  user,
 };
 
+
+/**
+ * EXAMPLE QUERIES:
+ *
+ * get user by email:
+ * curl -d '{"query":"query User($email: String) { user(email: $email) { id email } }","variables":{"email":"email@email.com"}}' -H "Content-Type: application/json" -X POST http://localhost:3001/api
+ *
+ * get user by id:
+ * curl -d '{"query":"query User($id: String) { user(id: $id) { id email } }","variables":{"id":"1"}}' -H "Content-Type: application/json" -X POST http://localhost:3001/api
+
+ * get user by google_id:
+ * curl -d '{"query":"query User($google_id: String) { user(google_id: $google_id) { id email } }","variables":{"google_id":"asd"}}' -H "Content-Type: application/json" -X POST http://localhost:3001/api
+ */
